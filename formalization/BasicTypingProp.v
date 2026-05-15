@@ -1,14 +1,12 @@
 From stdpp Require Import mapset.
+
+From CT Require Import Tactics.
+From CT Require Import Atom.
+From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
+From CT Require Import NamelessTactics.
 From CT Require Import BasicTyping.
 From CT Require Import OperationalSemantics.
-
-Import Atom.
-Import CoreLang.
-Import Tactics.
-Import NamelessTactics.
-Import BasicTyping.
-Import OperationalSemantics.
 
 (** This file proves properties of the basic type system. *)
 
@@ -96,7 +94,7 @@ Proof.
     (eauto using basic_typing_regular_value; my_set_solver);
   auto_eapply; [
       eapply basic_typing_weaken_insert_value; eauto; my_set_solver
-    | apply insert_commute; my_set_solver ].
+    | apply insert_insert_ne; my_set_solver ].
 Qed.
 
 Lemma basic_typing_subst_value: forall Γ z u U (v: value) T, Γ ⊢t u ⋮v U -> <[z := U]> Γ ⊢t v ⋮v T -> Γ ⊢t {z := u}v v ⋮v T.
@@ -118,7 +116,7 @@ Proof.
     (eauto using basic_typing_regular_value; my_set_solver);
   auto_eapply; [
       eapply basic_typing_weaken_insert_value; eauto; my_set_solver
-    | apply insert_commute; my_set_solver ].
+    | apply insert_insert_ne; my_set_solver ].
 Qed.
 
 (** * Type uniqueness lemmas *)
@@ -174,7 +172,7 @@ Proof.
     econstructor; eauto;
     try solve [
         try instantiate_atom_listctx;
-        try rewrite insert_commute in * by my_set_solver;
+        try rewrite insert_insert_ne in * by my_set_solver;
         auto_eapply; eauto;
         match goal with
         | |- context [{_ ~t> _} _] =>
@@ -199,11 +197,16 @@ Proof.
   simpl. rewrite open_rec_lc_tm; eauto.
   econstructor. apply basic_typing_weaken_insert_tm; eauto. my_set_solver.
   auto_exists_L_intros.
-  econstructor. instantiate (1 := T2). instantiate (1 := T1).
-  econstructor. setoid_rewrite lookup_insert_ne. setoid_rewrite lookup_insert. eauto. my_set_solver.
-  econstructor. simplify_map_eq; eauto.
-  auto_exists_L_intros.
-  econstructor. econstructor. simplify_map_eq; eauto.
+  econstructor.
+  - instantiate (1 := T2).
+    instantiate (1 := T1).
+    econstructor. setoid_rewrite lookup_insert_ne; [ | by my_set_solver].
+    setoid_rewrite lookup_insert; rewrite decide_True; tauto.
+  - econstructor; simplify_map_eq; eauto.
+    setoid_rewrite lookup_insert; rewrite decide_True; tauto.
+  - auto_exists_L_intros.
+    econstructor. econstructor.
+    setoid_rewrite lookup_insert; rewrite decide_True; tauto.
 Qed.
 
 Lemma mk_app_has_type_inv Γ e v T2 :
@@ -217,8 +220,11 @@ Proof.
   sinvert H6. remember x. auto_pose_fv y. repeat specialize_with y.
   sinvert H8. simpl in H12. auto_pose_fv z. repeat specialize_with z. subst.
   sinvert H12. sinvert H7. setoid_rewrite lookup_insert in H8. simplify_eq.
-  sinvert H11. setoid_rewrite lookup_insert in H7. simplify_eq.
-  sinvert H9. setoid_rewrite lookup_insert_ne in H7. setoid_rewrite lookup_insert in H7. simplify_eq.
+  sinvert H11. setoid_rewrite lookup_insert in H7.
+  repeat var_dec_solver.
+  sinvert H9.
+  setoid_rewrite lookup_insert_ne in H7. setoid_rewrite lookup_insert in H7.
+  repeat var_dec_solver.
   exists T3. intuition; eauto.
   eapply basic_typing_strengthen_tm; eauto.
   all: my_set_solver.

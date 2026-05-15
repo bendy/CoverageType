@@ -1,21 +1,20 @@
 From stdpp Require Import mapset.
 From stdpp Require Import natmap.
-From Coq.Program Require Import Wf.
+From Stdlib Require Import Program.Wf.
+
+From CT Require Import Atom.
+From CT Require Import Tactics.
+From CT Require Import NamelessTactics.
+From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
+From CT Require Import BasicTyping.
 From CT Require Import BasicTypingProp.
+From CT Require Import Qualifier.
+From CT Require Import ListCtx.
+From CT Require Import RefinementType.
 From CT Require Import RefinementTypeProp.
 From CT Require Import Instantiation.
-
-Import Atom.
-Import CoreLang.
-Import Tactics.
-Import NamelessTactics.
-Import ListCtx.
-Import OperationalSemantics.
-Import BasicTyping.
-Import Qualifier.
-Import RefinementType.
 
 (** This file defines type denotations in λᴱ (Fig. 7). *)
 
@@ -54,25 +53,36 @@ Notation "'⟦' τ '⟧' " := (rtyR (rty_measure τ) τ) (at level 20, format "�
 
 (** Context denotation (Fig. 7), defined as an inductive relation instead of a
   [Prop]-valued function. *)
-Inductive ctxRst: listctx rty -> epr -> Prop :=
-| ctxRst0: ctxRst [] (Epr ∅ ∅ (fun σ => σ = ∅))
-| ctxRst1: forall Γ σ L Σ (x: atom) b ϕ (v: value),
-    ctxRst Γ (Epr σ L Σ) ->
+
+Inductive ctxRst: listctx rty -> env -> Prop :=
+| ctxRst0: ctxRst [] ∅
+| ctxRst1: forall Γ env (x: atom) ρ (v: value),
+    ctxRst Γ env ->
+    (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
+    any function variables. *)
+    ok_ctx (Γ ++ [(x, ρ)]) ->
+    ⟦ m{ env }r ρ ⟧ v ->
+    ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> env).
+
+(*Inductive ctxRst: listctx rty -> env -> Prop :=
+| ctxRst0: ctxRst [] ∅
+| ctxRst1: forall Γ σ (x: atom) b ϕ (v: value),
+    ctxRst Γ σ ->
     (* [ok_ctx] implies [ρ] is closed and valid, meaning that it does not use
     any function variables. *)
     ok_ctx (Γ ++ [(x, {: b | ϕ})]) ->
     ⟦ m{ σ }r {: b | ϕ} ⟧ v ->
-    ctxRst (Γ ++ [(x, {: b | ϕ})]) (Epr (<[x := v]> σ) L Σ)
-| ctxRst2: forall Γ σ L Σ (x: atom) b ϕ,
-    ctxRst Γ (Epr σ L Σ) ->
+    ctxRst (Γ ++ [(x, {: b | ϕ})]) (<[x := v]> σ)
+| ctxRst2: forall Γ σ (x: atom) b ϕ (v : value),
+    ctxRst Γ σ ->
     ok_ctx (Γ ++ [(x, [: b | ϕ])]) ->
-    ctxRst (Γ ++ [(x, [: b | ϕ])])
-      (Epr σ L (fun σ2 => exists σ1 (v: value), ⟦ m{ σ ∪ σ1 }r {: b | ϕ} ⟧ v /\ σ2 = (<[ x := v ]> σ1)))
-| ctxRst3: forall Γ σ L Σ (x: atom) ρ τ (v: value),
-    ctxRst Γ (Epr σ L Σ) ->
+    ⟦ m{ σ }r [: b | ϕ] ⟧ v ->
+    ctxRst (Γ ++ [(x, [: b | ϕ])]) (<[x := v]> σ)
+| ctxRst3: forall Γ σ (x: atom) ρ τ (v: value),
+    ctxRst Γ σ ->
     ok_ctx (Γ ++ [(x, ρ ⇨ τ)]) ->
     ⟦ m{ σ }r (ρ ⇨ τ) ⟧ v ->
-    ctxRst (Γ ++ [(x, ρ ⇨ τ)]) (Epr (<[x := v]> σ) L Σ).
+    ctxRst (Γ ++ [(x, ρ ⇨ τ)]) (<[x := v]> σ). *)
 
 (** * Properties of denotation *)
 
@@ -124,38 +134,43 @@ Proof.
   eauto using basic_typing_regular_tm.
 Qed.
 
-Lemma ctxRst_closed_pp Γ Γv : ctxRst Γ Γv -> closed_epr Γv.
-Admitted.
-(* Proof. *)
-(*   unfold close_pp. unfold closed_env. *)
-(*   induction 1; intros; subst; *)
-(*     repeat rewrite ctxdom_app_union in *; intuition; *)
-(*     try solve [apply map_Forall_empty]; *)
-(*     simpl; unfold close_pp in H1; ospecialize * H1; eauto; my_set_solver. *)
-(* Qed. *)
+(* Lemma ctxRst_closed_pp Γ Γv : ctxRst Γ Γv -> closed_env Γv.
+Proof.
+  unfold closed_env.
+  induction 1; intros; subst;
+    repeat rewrite ctxdom_app_union in *; intuition;
+    try solve [apply map_Forall_empty];
+    simpl; ospecialize * H1; eauto; eapply map_Forall_insert_2; eauto using rtyR_closed_value.
+Qed. *)
 
-(* Lemma ctxRst_closed_env Γ p σ L Σ : ctxRst Γ (Epr σ L Σ) -> closed_env σ. *)
-(* Proof. *)
-(*   intros. apply ctxRst_closed_pp in H. unfold close_pp in H. ospecialize * H; eauto. *)
-(*   intuition. *)
-(* Qed. *)
+Lemma ctxRst_closed_env Γ σ : ctxRst Γ σ -> closed_env σ.
+Proof.
+  unfold closed_env.
+  induction 1; intros; subst;
+    repeat rewrite ctxdom_app_union in *; intuition;
+    try solve [apply map_Forall_empty];
+    simpl; ospecialize * H1; eauto; eapply map_Forall_insert_2; eauto using rtyR_closed_value.
+Qed.
 
-(* Lemma ctxRst_lc Γ p Γv : *)
-(*   ctxRst Γ p -> p Γv -> *)
-(*   map_Forall (fun _ v => lc (treturn v)) Γv. *)
-(* Proof. *)
-(*   intros. apply ctxRst_closed_pp in H. unfold close_pp in H. ospecialize * H; eauto. *)
-(*   intuition. *)
-(* Qed. *)
+Lemma ctxRst_lc Γ Γv :
+  ctxRst Γ Γv ->
+  map_Forall (fun _ v => lc (treturn v)) Γv.
+Proof.
+  induction 1.
+  apply map_Forall_empty.
+  apply map_Forall_insert_2; eauto.
+  apply rtyR_typed_closed in H1. simp_hyps.
+  eauto using basic_typing_regular_tm.
+Qed.
 
 Lemma ctxRst_dom Γ Γv :
   ctxRst Γ Γv ->
-  ctxdom Γ ≡ eprdom Γv.
+  ctxdom Γ ≡ dom Γv.
 Proof.
-Admitted.
-(*   intros. apply ctxRst_closed_pp in H. unfold close_pp in H. ospecialize * H; eauto. *)
-(*   intuition. *)
-(* Qed. *)
+  intros.
+  induction H; try reflexivity; rewrite ctxdom_app_union;
+    my_set_solver.
+Qed.
 
 Lemma ctxRst_ok_ctx Γ Γv :
   ctxRst Γ Γv ->

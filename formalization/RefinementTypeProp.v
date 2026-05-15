@@ -1,22 +1,17 @@
 From stdpp Require Import mapset.
 From stdpp Require Import natmap.
+
+From CT Require Import Atom.
+From CT Require Import Tactics.
+From CT Require Import NamelessTactics.
+From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
+From CT Require Import BasicTyping.
 From CT Require Import BasicTypingProp.
 From CT Require Import Qualifier.
 From CT Require Import ListCtx.
 From CT Require Import RefinementType.
-
-Import Atom.
-Import CoreLang.
-Import Tactics.
-Import NamelessTactics.
-Import OperationalSemantics.
-Import BasicTyping.
-Import Qualifier.
-Import ListCtx.
-Import List.
-Import RefinementType.
 
 (** * Naming properties of refinement type syntax *)
 
@@ -40,7 +35,9 @@ Lemma ctx_erase_lookup Γ x ρ :
 Proof.
   induction Γ; simpl; intros; try easy.
   destruct a. case_decide. simplify_eq.
-  cbn. simplify_map_eq. reflexivity.
+  cbn. rewrite insert_empty. rewrite <- insert_union_singleton_l.
+  setoid_rewrite lookup_insert.
+  rewrite decide_True by reflexivity; tauto.
   simp_hyps.
   cbn. rewrite insert_empty. rewrite <- insert_union_singleton_l.
   simplify_map_eq. reflexivity.

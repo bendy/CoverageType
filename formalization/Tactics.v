@@ -2,9 +2,7 @@ From CT Require Import Atom.
 From stdpp Require Export prelude fin_maps fin_map_dom.
 From Hammer Require Export Tactics.
 
-Import Atom.
-
-(** * Some tactics in the file is inspired by OADT: https://github.com/ccyip/oadt *)
+(** * Some of these tactics are inspired by OADT: https://github.com/ccyip/oadt *)
 (** * Fold over hypotheses *)
 
 Ltac revert_all :=

@@ -1,21 +1,18 @@
-Require Import Coq.Program.Wf.
 From stdpp Require Import mapset.
 From stdpp Require Import natmap.
+
+From Stdlib Require Import Program.Wf.
+
+From CT Require Import Atom.
+From CT Require Import Tactics.
+From CT Require Import NamelessTactics.
+From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
+From CT Require Import BasicTyping.
 From CT Require Import BasicTypingProp.
 From CT Require Import Qualifier.
 From CT Require Import ListCtx.
-
-Import Atom.
-Import CoreLang.
-Import Tactics.
-Import NamelessTactics.
-Import OperationalSemantics.
-Import BasicTyping.
-Import Qualifier.
-Import ListCtx.
-Import List.
 
 (** Refinement types (t in Fig. 4) *)
 Inductive rty : Type :=
@@ -126,7 +123,7 @@ Fixpoint rty_subst (k: atom) (s: value) (ρ: rty) : rty :=
 Notation "'{' x ':=' s '}r'" := (rty_subst x s) (at level 20, format "{ x := s }r", x constr).
 
 (** Local closure *)
-(** NOTE: To alaign with denotation, we assume the function type doesn't appear in transduce. *)
+(** NOTE: To align with denotation, we assume the function type doesn't appear in transduce. *)
 (** NOTE: all (L: aset) should be the first hypothesis. *)
 Inductive lc_rty : rty -> Prop :=
 | lc_rtyOver: forall b ϕ, lc_phi1 ϕ -> fine_rty {: b | ϕ} -> lc_rty {: b | ϕ}

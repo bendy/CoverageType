@@ -1,16 +1,16 @@
 From stdpp Require Import mapset.
+From Stdlib Require Import Lists.List.
+
 From CT Require Import Atom.
 From CT Require Import NamelessTactics.
-From Coq Require Import Lists.List.
-Import Atom.
-Import Tactics.
-Import NamelessTactics.
-Import List.
+From CT Require Import Tactics.
 
-(** This file defines an ordered type context used in refinement typing. *)
+(** This file defines the telescope (ordered dependent type context)
+    used in refinement typing. *)
 
 (** Type Context Definition (Γ in Fig. 4) *)
-(** We use list instead of set since the type context in the refinement typing has dependency. *)
+(** We use list instead of set since the refinement type system use a
+    telescope for their type context. *)
 Definition listctx (A: Type) := list (atom * A).
 
 Fixpoint ctxdom {A: Type} (Γ: listctx A) : aset :=

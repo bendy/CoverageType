@@ -1,4 +1,6 @@
 -Q . CT
+-arg -w
+-arg -notation-overridden
 Atom.v
 Tactics.v
 CoreLang.v

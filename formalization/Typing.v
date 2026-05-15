@@ -49,7 +49,7 @@ semantic subtyping in the mechanization. *)
 Definition subtyping (Γ: listctx rty) (ρ1 ρ2: rty) : Prop :=
   (* Assume [ρ1] and [ρ2] are valid [rty]s. *)
   ⌊ ρ1 ⌋ = ⌊ ρ2 ⌋ /\ (is_coverage_rty ρ1 <-> is_coverage_rty ρ2) /\
-    forall epr, ctxRst Γ epr -> exists Γv, eprR epr Γv -> forall e, ⟦m{ Γv }r ρ1⟧ e → ⟦m{ Γv }r ρ2⟧ e.
+    forall Γv, ctxRst Γ Γv -> forall e, ⟦m{ Γv }r ρ1⟧ e → ⟦m{ Γv }r ρ2⟧ e.
 
 Notation " Γ '⊢' τ1 '<⋮' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
 
@@ -57,8 +57,8 @@ Definition join (Γ: listctx rty) (ρ1 ρ2 ρ3: rty) : Prop :=
   (* Assume [ρ1] and [ρ2] are valid [rty]s. *)
   ⌊ ρ1 ⌋ = ⌊ ρ2 ⌋ /\ ⌊ ρ1 ⌋ = ⌊ ρ3 ⌋ /\
     (is_coverage_rty ρ1 <-> is_coverage_rty ρ2) /\ (is_coverage_rty ρ1 <-> is_coverage_rty ρ3) /\
-    forall epr, ctxRst Γ epr -> exists Γv, eprR epr Γv ->
-                            forall e, ⟦m{ Γv }r ρ3⟧ e <-> ⟦m{ Γv }r ρ1⟧ e \/ ⟦m{ Γv }r ρ2⟧ e.
+    forall Γv, ctxRst Γ Γv ->
+               forall e, ⟦m{ Γv }r ρ3⟧ e <-> ⟦m{ Γv }r ρ1⟧ e \/ ⟦m{ Γv }r ρ2⟧ e.
 
 Notation " Γ '⊢' τ1 '<⋮' τ2 " := (subtyping Γ τ1 τ2) (at level 20, τ1 constr, τ2 constr, Γ constr).
 
@@ -128,11 +128,15 @@ Inductive term_type_check : listctx rty -> tm -> rty -> Prop :=
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v [:TBool | ϕ] ->
     (forall x, x ∉ L -> (Γ ++ [(x, [: TBool | b0:c=true & b0:v= v & ϕ])]) ⊢ e1 ⋮t τ) ->
+    (* Need this to ensure that refinement typing guarantees basic typing *)
+    ⌊Γ⌋* ⊢t e2 ⋮t ⌊τ⌋ ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
 | TMatchbFalse: forall Γ (v: value) e1 e2 ϕ τ (L : aset),
     Γ ⊢WF τ ->
     Γ ⊢ v ⋮v [:TBool | ϕ] ->
     (forall x, x ∉ L -> (Γ ++ [(x, [: TBool | b0:c=false & b0:v= v & ϕ])]) ⊢ e2 ⋮t τ) ->
+    (* Need this to ensure that refinement typing guarantees basic typing *)
+    ⌊Γ⌋* ⊢t e1 ⋮t ⌊τ⌋ ->
     Γ ⊢ (tmatchb v e1 e2) ⋮t τ
 with value_type_check : listctx rty -> value -> rty -> Prop :=
 | TSubPP: forall Γ (v: value) (ρ1 ρ2: rty),
@@ -245,26 +249,29 @@ Proof.
     eauto.
   - hauto using subtyping_preserves_basic_typing.
   - hauto using subtyping_preserves_basic_typing.
-(*   - destruct ρ1; simpl in *. *)
-(*     all: econstructor; eauto; *)
-(*       instantiate_atom_listctx; *)
-(*       rewrite ctx_erase_app_r in H0 by my_set_solver; eauto. *)
-(*   - destruct ρ1; simpl in *. *)
-(*     all: auto_exists_L; intros; repeat specialize_with x; *)
-(*         rewrite ctx_erase_app_r in H0 by my_set_solver; *)
-(*         simpl in H0; repeat rewrite <- rty_erase_open_eq in H0; eauto. *)
-(*   - apply effop_typing_preserves_basic_typing in H4. cbn in H4. sinvert H4. *)
-(*     econstructor; eauto. qauto. *)
-(*     instantiate_atom_listctx. *)
-(*     rewrite ctx_erase_app_r in H0 by my_set_solver. *)
-(*     rewrite <- rty_erase_open_eq in H0; eauto. *)
-(*   - auto_pose_fv x. repeat specialize_with x. *)
-(*     rewrite ctx_erase_app_r in H3, H5 by my_set_solver. *)
-(*     econstructor; eauto. *)
-(*     eapply basic_typing_strengthen_tm; eauto. my_set_solver. *)
-(*     eapply basic_typing_strengthen_tm; eauto. my_set_solver. *)
-(* Qed. *)
-Admitted.
+  - all: econstructor; eauto;
+      instantiate_atom_listctx;
+      rewrite ctx_erase_app_r in H0 by my_set_solver; eauto.
+  - all: auto_exists_L; intros; repeat specialize_with x;
+        rewrite ctx_erase_app_r in H0 by my_set_solver;
+      simpl in H0; repeat rewrite <- rty_erase_open_eq in H0; eauto.
+  - all: auto_exists_L; intros; repeat specialize_with x;
+        rewrite ctx_erase_app_r in H0 by my_set_solver;
+      simpl in H0; repeat rewrite <- rty_erase_open_eq in H0; eauto.
+  - apply effop_typing_preserves_basic_typing in H4. cbn in H4. sinvert H4.
+    econstructor; eauto.
+    instantiate_atom_listctx.
+    rewrite ctx_erase_app_r in H0 by my_set_solver.
+    rewrite <- rty_erase_open_eq in H0; eauto.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite ctx_erase_app_r in H3 by my_set_solver.
+    econstructor; eauto.
+    eapply basic_typing_strengthen_tm; eauto. my_set_solver.
+  - auto_pose_fv x. repeat specialize_with x.
+    rewrite ctx_erase_app_r in H3 by my_set_solver.
+    econstructor; eauto.
+    eapply basic_typing_strengthen_tm; eauto. my_set_solver.
+Qed.
 
 Lemma value_typing_regular_basic_typing: forall (Γ: listctx rty) (v: value) (ρ: rty),
     Γ ⊢ v ⋮v ρ -> ⌊ Γ ⌋* ⊢t v ⋮v ⌊ ρ ⌋.
@@ -278,62 +285,67 @@ Proof.
   apply value_tm_typing_regular_basic_typing.
 Qed.
 
-(* Lemma ctxRst_insert_easy Γ P (x: atom) ρ P': *)
-(*     ctxRst Γ P -> *)
-(*     x ∉ ctxdom Γ -> *)
-(*     (forall env (v: value), ⟦ m{ env }r ρ ⟧ v -> P env <-> P' (<[ x := v ]> env)) -> *)
-(*     ctxRst (Γ ++ [(x, ρ)]) P'. *)
-(* Proof. *)
-(*   intros. econstructor; eauto. *)
-(*   econstructor; eauto using ctxRst_ok_ctx. *)
-(*   apply rtyR_typed_closed in H1. simp_hyps. *)
-(*   (* This should be a lemma similar to [msubst_preserves_closed_rty_empty], or *)
-(*   we should strenghthen this lemma. But don't bother now as it is only used *)
-(*   here. *) *)
-(*   sinvert H3. *)
-(*   econstructor. eauto using lc_msubst_rty, ctxRst_lc. *)
-(*   rewrite fv_of_msubst_rty_closed in H5 by eauto using ctxRst_closed_env. *)
-(*   rewrite ctxRst_dom in * by eauto. *)
-(*   my_set_solver. *)
-(* Qed. *)
+Lemma ctxRst_insert_easy Γ (x: atom) ρ σ (v : value):
+    ctxRst Γ σ ->
+    x ∉ ctxdom Γ ->
+    ⟦ m{ σ }r ρ ⟧ v ->
+    closed_rty (ctxdom Γ) ρ ->
+    (ctxRst (Γ ++ [(x, ρ)]) (<[ x := v ]> σ)).
+Proof.
+  induction 1.
+  - intros. econstructor; eauto; try solve econstructor.
+    + econstructor.
+    + constructor; eauto.
+      * constructor.
+  - intros. econstructor; eauto; try solve econstructor.
+    + constructor; eauto.
+    +
+      apply rtyR_typed_closed in H1. simp_hyps.
+      (* This should be a lemma similar to [msubst_preserves_closed_rty_empty], or *)
+      (*   we should strenghthen this lemma. But don't bother now as it is only used *)
+      (*   here. *)
+      econstructor.
+      * eauto using lc_msubst_rty, ctxRst_lc.
+      * intuition.
+      * intuition.
+Qed.
 
-(* Lemma ctxRst_ctxfind Γ Γv x ρ : *)
-(*   ctxRst Γ Γv -> *)
-(*   ctxfind Γ x = Some ρ -> *)
-(*   fine_rty ρ -> *)
-(*   exists (v : value), Γv !! x = Some v /\ ⟦ m{ Γv }r ρ ⟧ v. *)
-(* Proof. *)
-(*   induction 1. *)
-(*   - easy. *)
-(*   - intros. *)
-(*     select (ctxfind (_ ++ _) _ = _) *)
-(*       (fun H => apply ctxfind_app in H; eauto using ok_ctx_ok). *)
-
-(*     assert (forall (v' : value), (⟦(m{env}r) ρ⟧) v' -> *)
-(*                             (⟦(m{<[x0:=v]> env}r) ρ⟧) v'). { *)
-(*       select (⟦ _ ⟧ _) (fun H => apply rtyR_typed_closed in H). simp_hyps. *)
-(*       intros. *)
-(*       apply rtyR_msubst_insert_eq; eauto using ctxRst_closed_env. *)
-(*       select (_ ⊢t _ ⋮t _) *)
-(*         (fun H => apply basic_typing_contains_fv_tm in H; simpl in H). *)
-(*       my_set_solver. *)
-(*       select (ok_ctx _) (fun H => apply ok_ctx_ok in H; apply ok_post_destruct in H). *)
-(*       srewrite ctxRst_dom. *)
-(*       simp_hyps. *)
-(*       apply not_elem_of_dom. eauto. *)
-(*     } *)
-(*     destruct_or!; simp_hyps. *)
-(*     + eexists. split; eauto. *)
-(*       assert (x <> x0). { *)
-(*         select (ok_ctx _) (fun H => sinvert H); listctx_set_simpl. *)
-(*         select (ctxfind _ _ = _) (fun H => apply ctxfind_some_implies_in_dom in H). *)
-(*         my_set_solver. *)
-(*       } *)
-(*       by simplify_map_eq. *)
-(*     + simpl in *. *)
-(*       case_decide; try easy. simplify_eq. *)
-(*       eexists. split; eauto. by simplify_map_eq. *)
-(* Qed. *)
+Lemma ctxRst_ctxfind Γ Γv x ρ :
+  ctxRst Γ Γv ->
+  ctxfind Γ x = Some ρ ->
+  fine_rty ρ ->
+  exists (v : value), Γv !! x = Some v /\ ⟦ m{ Γv }r ρ ⟧ v.
+Proof.
+  induction 1.
+  - easy.
+  - intros.
+    select (ctxfind (_ ++ _) _ = _)
+      (fun H => apply ctxfind_app in H; eauto using ok_ctx_ok).
+    assert (forall (v' : value), (⟦(m{env}r) ρ⟧) v' ->
+                            (⟦(m{<[x0:=v]> env}r) ρ⟧) v'). {
+      select (⟦ _ ⟧ _) (fun H => apply rtyR_typed_closed in H). simp_hyps.
+      intros.
+      apply rtyR_msubst_insert_eq; eauto using ctxRst_closed_env.
+      select (_ ⊢t _ ⋮t _)
+        (fun H => apply basic_typing_contains_fv_tm in H; simpl in H).
+      my_set_solver.
+      select (ok_ctx _) (fun H => apply ok_ctx_ok in H; apply ok_post_destruct in H).
+      srewrite ctxRst_dom.
+      simp_hyps.
+      apply not_elem_of_dom. eauto.
+    }
+    destruct_or!; simp_hyps.
+    + eexists. split; eauto.
+      assert (x <> x0). {
+        select (ok_ctx _) (fun H => sinvert H); listctx_set_simpl.
+        select (ctxfind _ _ = _) (fun H => apply ctxfind_some_implies_in_dom in H).
+        my_set_solver.
+      }
+      by simplify_map_eq.
+    + simpl in *.
+      case_decide; try easy. simplify_eq.
+      eexists. split; eauto. by simplify_map_eq.
+Qed.
 
 Ltac msubst_erase_simp :=
   repeat match goal with

@@ -1,22 +1,23 @@
 From stdpp Require Import mapset fin_maps.
+
+From Stdlib Require Import Logic.ClassicalFacts.
+From Stdlib Require Import Classical.
+From Stdlib Require Import Arith.Compare_dec.
+
+From CT Require Import Atom.
+From CT Require Import Tactics.
+From CT Require Import NamelessTactics.
+From CT Require Import CoreLang.
 From CT Require Import CoreLangProp.
 From CT Require Import OperationalSemantics.
+From CT Require Import BasicTyping.
 From CT Require Import BasicTypingProp.
 From CT Require Import Qualifier.
+From CT Require Import ListCtx.
+From CT Require Import RefinementType.
 From CT Require Import RefinementTypeProp.
-From CT Require Import Denotation.
 From CT Require Import Instantiation.
-
-Import Atom.
-Import CoreLang.
-Import Tactics.
-Import NamelessTactics.
-Import OperationalSemantics.
-Import BasicTyping.
-Import ListCtx.
-Import Qualifier.
-Import Denotation.
-Import RefinementType.
+From CT Require Import Denotation.
 
 (** This file proves auxiliary lemmas about multi-substitution and provides
   handy tactics. *)
@@ -194,6 +195,13 @@ Proof.
   msubst_tac.
 Qed.
 
+Lemma msubst_terr: forall Γv (T : ty),
+    closed_env Γv ->
+    (m{Γv}t) (terr T) = terr T.
+Proof.
+  msubst_tac.
+Qed.
+
 Lemma msubst_match: forall Γv (v: value) e1 e2,
     closed_env Γv ->
     ((m{Γv}t) (tmatchb v e1 e2)) = tmatchb (m{Γv}v v) (m{Γv}t e1) (m{Γv}t e2).
@@ -271,6 +279,16 @@ Proof.
   rewrite msubst_qualifier in *; eauto.
 Qed.
 
+Lemma msubst_mk_bot: forall (Γv: env) b,
+    closed_env Γv ->
+    m{Γv}r (mk_bot b) = mk_bot b.
+Proof.
+  intros.
+  unfold mk_bot, mk_q_under_bot.
+  rewrite msubst_underrty in *; eauto. f_equal.
+  rewrite msubst_qualifier in *; eauto.
+Qed.
+
 Lemma msubst_mk_eq_constant: forall (Γv: env) c,
     closed_env Γv ->
     (m{Γv}r) (mk_eq_constant c) = (mk_eq_constant c).
@@ -314,6 +332,8 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }t (treturn _) ] => rewrite msubst_value
   | H: context [ m{ _ }v (vlam _ _) ] |- _ => rewrite msubst_lam in H
   | |- context [ m{ _ }v (vlam _ _) ] => rewrite msubst_lam
+  | H: context [ m{ _ }t (terr _) ] |- _ => rewrite msubst_terr in H
+  | |- context [ m{ _ }t (terr _) ] => rewrite msubst_terr
   | H: context [ m{ _ }t (tmatchb _ _ _) ] |- _ => rewrite msubst_match in H
   | |- context [ m{ _ }t (tmatchb _ _ _) ] => rewrite msubst_match
   | H: context [ m{ _ }v (vbvar _) ] |- _ => rewrite msubst_bvar in H
@@ -335,13 +355,15 @@ Ltac msubst_simp :=
   | |- context [ m{ _ }r (_ ⇨ _ ) ] => rewrite msubst_arrrty
   | H: context [ m{ _ }r (mk_top _) ] |- _ => rewrite msubst_mk_top in H
   | |- context [ m{ _ }r (mk_top _) ] => rewrite msubst_mk_top
+  | H: context [ m{ _ }r (mk_bot _) ] |- _ => rewrite msubst_mk_bot in H
+  | |- context [ m{ _ }r (mk_bot _) ] => rewrite msubst_mk_bot
   | H: context [ m{ _ }r (mk_eq_constant _) ] |- _ => rewrite msubst_mk_eq_constant in H
   | |- context [ m{ _ }r (mk_eq_constant _) ] => rewrite msubst_mk_eq_constant
   | H: context [ m{ _ }r (flip_rty _) ] |- _ => rewrite msubst_flip_rty in H
   | |- context [ m{ _ }r (flip_rty _) ] => rewrite msubst_flip_rty
   | H: context [ m{ _ }r (mk_eq_var _ ?x) ], H': _ !! ?x = Some ?v |- _ => rewrite msubst_mk_eq_var with (v:=v) in H
   | H': _ !! ?x = Some ?v |- context [ m{ _ }r (mk_eq_var _ ?x) ] => rewrite msubst_mk_eq_var with (v:=v)
-  end; eauto.
+  end; eauto using ctxRst_closed_env.
 
 
 (* Most lemmas here are generalization of the corresponding lemmas about
@@ -609,28 +631,29 @@ Proof.
   rewrite dom_insert_L. my_set_solver.
 Qed.
 
-(* Lemma msubst_preserves_closed_rty Γ epr Γv Γ' ρ : *)
-(*   ctxRst Γ epr -> eprR epr Γv ->> *)
-(*   closed_rty (ctxdom (Γ ++ Γ')) ρ -> *)
-(*   closed_rty (ctxdom (Γ')) (m{Γv}r ρ). *)
-(* Proof. *)
-(*   intros HΓv HP H. *)
-(*   sinvert H. *)
-(*   econstructor. eauto using msubst_lc_rty, ctxRst_lc. *)
-(*   rewrite fv_of_msubst_rty_closed by eauto using ctxRst_closed_env. *)
-(*   rewrite ctxdom_app_union in *. *)
-(*   rewrite ctxRst_dom in * by eauto. *)
-(*   my_set_solver. *)
-(* Qed. *)
+Lemma msubst_preserves_closed_rty Γ Γv Γ' ρ :
+  ctxRst Γ Γv ->
+  closed_rty (ctxdom (Γ ++ Γ')) ρ ->
+  closed_rty (ctxdom (Γ')) (m{Γv}r ρ).
+Proof.
+  intros HΓv H.
+  sinvert H.
+  econstructor. eapply msubst_lc_rty; eauto.
+  admit.
+  rewrite fv_of_msubst_rty_closed by eauto using ctxRst_closed_env.
+  rewrite ctxdom_app_union in *.
+  rewrite ctxRst_dom in * by eauto.
+  my_set_solver.
+Admitted.
 
-(* Lemma msubst_preserves_closed_rty_empty Γ epr Γv ρ : *)
-(*   ctxRst Γ epr -> eprR epr Γv ->> *)
-(*   closed_rty (ctxdom Γ) ρ -> *)
-(*   closed_rty ∅ (m{Γv}r ρ). *)
-(* Proof. *)
-(*   intros. eapply msubst_preserves_closed_rty with (Γ':=[]); eauto. *)
-(*   by simplify_list_eq. *)
-(* Qed. *)
+Lemma msubst_preserves_closed_rty_empty Γ Γv ρ :
+  ctxRst Γ Γv ->
+  closed_rty (ctxdom Γ) ρ ->
+  closed_rty ∅ (m{Γv}r ρ).
+Proof.
+  intros. eapply msubst_preserves_closed_rty with (Γ':=[]); eauto.
+  by simplify_list_eq.
+Qed.
 
 Lemma msubst_preserves_rty_measure ρ Γv:
   rty_measure ρ = rty_measure (m{Γv}r ρ).
@@ -638,15 +661,19 @@ Proof.
   msubst_tac. qauto using subst_preserves_rty_measure.
 Qed.
 
-Lemma msubst_preserves_basic_typing_tm Γ epr Γv :
-  ctxRst Γ epr -> eprR epr Γv ->
+Lemma msubst_preserves_basic_typing_tm Γ Γv :
+  ctxRst Γ Γv ->
   forall Γ' e T,
     (⌊Γ⌋* ∪ Γ') ⊢t e ⋮t T ->
     Γ' ⊢t m{Γv}t e ⋮t T.
 Proof.
-  intros H HP.
-  induction 1; intros; eauto.
-  - repeat msubst_simp.
+  intros H.
+Admitted.
+(* induction 1; intros; eauto.
+    try msubst_simp; eauto using ctxRst_closed_pp.
+  -
+
+    repeat msubst_simp. *)
 (*   apply_eq H. cbn. apply map_empty_union. *)
 (*   rewrite ctx_erase_app in H2. *)
 (*   rewrite <- map_union_assoc in H2. *)
@@ -662,10 +689,9 @@ Proof.
 (*   apply rtyR_typed_closed in H1. simp_hyps. *)
 (*   sinvert H1. apply_eq H6. eauto using rty_erase_msubst_eq. *)
 (* Qed. *)
-Admitted.
 
-Lemma msubst_preserves_basic_typing_value Γ epr Γv :
-  ctxRst Γ epr -> eprR epr Γv ->
+Lemma msubst_preserves_basic_typing_value Γ Γv :
+  ctxRst Γ Γv ->
   forall Γ' v T,
     (⌊Γ⌋* ∪ Γ') ⊢t v ⋮v T ->
     Γ' ⊢t m{Γv}v v ⋮v T.
@@ -688,8 +714,8 @@ Admitted.
 (*   sinvert H1. apply_eq H6. eauto using rty_erase_msubst_eq. *)
 (* Qed. *)
 
-Lemma msubst_preserves_basic_typing_tm_empty Γ epr Γv :
-  ctxRst Γ epr -> eprR epr Γv ->
+Lemma msubst_preserves_basic_typing_tm_empty Γ Γv :
+  ctxRst Γ Γv ->
   forall e T,
     ( ⌊Γ⌋* ) ⊢t e ⋮t T ->
     ∅ ⊢t m{Γv}t e ⋮t T.
@@ -698,8 +724,8 @@ Proof.
   rewrite map_union_empty. eauto.
 Qed.
 
-Lemma msubst_preserves_basic_typing_value_empty Γ epr Γv :
-  ctxRst Γ epr -> eprR epr Γv ->
+Lemma msubst_preserves_basic_typing_value_empty Γ Γv :
+  ctxRst Γ Γv ->
   forall v T,
     ( ⌊Γ⌋* ) ⊢t v ⋮v T ->
     ∅ ⊢t m{Γv}v v ⋮v T.
@@ -729,10 +755,6 @@ Proof.
   rewrite fv_of_subst_tm_closed by eauto.
   rewrite dom_insert_L. my_set_solver.
 Qed.
-
-From Coq Require Import Logic.ClassicalFacts.
-From Coq Require Import Classical.
-From Coq Require Import Arith.Compare_dec.
 
 Lemma msubst_fvar_inv (Γv : env) v (x : atom) :
   closed_env Γv ->
