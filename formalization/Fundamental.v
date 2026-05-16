@@ -282,7 +282,8 @@ Proof.
         rewrite open_rec_lc_rty.
         erewrite <- msubst_intro_tm in HDe1; eauto using ctxRst_closed_env, rtyR_closed_value, ctxRst_lc;
           simpl_fv; my_set_solver.
-        { admit. }
+        { eapply msubst_lc_rty; eauto using ctxRst_lc.
+          destruct HWF as [Hclosed _]. destruct Hclosed. eauto. }
         apply ctxRst_dom in HΓv; my_set_solver.
   (* [TApp] *)
   - intros Γ v1 v2 e ρ1 ρ2 A ρ B L HTe HDe HWF HTv2 HDv2 HTv1 HDv1 Γv HΓv.
