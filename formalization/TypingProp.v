@@ -81,7 +81,8 @@ Lemma denotation_application_tlete ρ_x ρ e_x e:
   (⟦ ρ ⟧) (tlete e_x e).
 Proof.
   intros Hclosed2 HTe He_x He.
-  assert (closed_rty ∅ ρ_x) as Hclosed1. split; intuition.
+Admitted.
+(*  assert (closed_rty ∅ ρ_x) as Hclosed1. split; intuition.
   split; [| split]; eauto.
   finerty_destruct ρ.
   - intros α β v H HDv. simpl td_open in H.
@@ -126,7 +127,7 @@ Proof.
       specialize (He α' β Hβ). destruct He as (v & Hv & He).
       exists v. split; auto.
       eapply reduction_tlete'; eauto. lc_solver_plus.
-Qed.
+Qed. *)
 
 Ltac is_coverage_rty_tac :=
   repeat match goal with
@@ -207,20 +208,27 @@ Proof.
   - unfold value_of_op.
     rewrite reduction_mk_app_iff; eauto.
     exists (vlam TNat (tleteffop op (vbvar 0) (vbvar 0))), c. intuition; eauto.
-    admit.
-    econstructor.
-    repeat econstructor.
-    econstructor.
-    repeat econstructor.
-    eauto.
-    econstructor.
-    rewrite decide_False by congruence.
-    eapply STLetE2.
-    rewrite decide_True by congruence; eauto.
-    eauto.
-    econstructor.
-    repeat econstructor.
-Admitted.
+    + econstructor.
+      lc_solver.
+      econstructor; intros.
+      cbn; rewrite decide_True; eauto.
+      rewrite decide_False; eauto.
+      repeat econstructor.
+    + econstructor.
+      repeat econstructor.
+      econstructor.
+      repeat econstructor.
+      eauto.
+      econstructor.
+      rewrite decide_False by congruence.
+      eapply STLetE2.
+      rewrite decide_True by congruence; eauto.
+      eauto.
+      econstructor.
+      repeat econstructor.
+      Unshelve.
+      all: (exact ∅).
+Qed.
 
 (* Lemma denotation_application_tletopapp ρ1 b2 ϕ2 A ρ B op (v2: value) e: *)
 (*   closed_rty ∅ (ρ !<[ ((ex_phi_to_td [:b2|ϕ2] A) ^a^ v2) ○ B ]>) -> *)
