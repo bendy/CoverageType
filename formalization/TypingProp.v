@@ -15,6 +15,7 @@ From CT Require Import RefinementTypeProp.
 From CT Require Import Instantiation.
 From CT Require Import InstantiationProp.
 From CT Require Import Denotation.
+From CT Require Import DenotationProp.
 From CT Require Import Typing.
 
 Ltac closed_simp :=
@@ -81,6 +82,25 @@ Lemma denotation_application_tlete ρ_x ρ e_x e:
   (⟦ ρ ⟧) (tlete e_x e).
 Proof.
   intros Hclosed2 HTe He_x He.
+  (* Simplify He: since ρ is closed (lc_rty), open is identity *)
+  assert (lc_rty ρ) as Hlc by (destruct Hclosed2; auto).
+  assert (forall (vv : value), ⟦ρ_x⟧ vv -> ⟦ρ⟧ (e ^t^ vv)) as He'.
+  { intros vv Hvv. specialize (He vv Hvv).
+    rewrite open_rec_lc_rty in He by auto. exact He. }
+  (* Get body e and lc e_x from the typing of tlete *)
+  assert (lc (tlete e_x e)) as Hlclete by eauto using basic_typing_regular_tm.
+  rewrite lete_lc_body in Hlclete.
+  destruct Hlclete as [Hlcex Hbody].
+  (* Case split on ρ *)
+  destruct ρ as [b ϕ | b ϕ | ρa τa].
+  - cbn; intuition.
+    eapply reduction_tlete' in H; destruct H; intuition.
+
+
+
+    admit.
+
+
 Admitted.
 (*  assert (closed_rty ∅ ρ_x) as Hclosed1. split; intuition.
   split; [| split]; eauto.
@@ -282,22 +302,25 @@ Lemma denotation_application_lam Tx T ρ τ e :
 Proof.
   intros Htm He Ht Hc H.
   split; [| split]; eauto. sinvert He; eauto.
-  exists (vlam Tx e). split. pure_multistep_tac. (*intros v_x HDv_x.
+  intros.
   repeat rewrite_measure_irrelevant.
-  specialize (H v_x HDv_x).
+  specialize (H v H0).
   eapply rtyR_refine; cycle 1; eauto.
-  apply rtyR_typed_closed in HDv_x. simp_hyps. sinvert H0.
+  apply rtyR_typed_closed in H0. simp_hyps. sinvert H1.
   split; intros.
   - apply rtyR_typed_closed in H. destruct H as [H _].
+    eexists T.
+    instantiate (1 := e ^t^ v).
     repeat esplit; eauto.
-    rewrite <- rty_erase_open_eq.
-    sinvert He.
     eapply mk_app_has_type; eauto.
-  - apply reduction_mk_app'.
-    rewrite reduction_tletapp_lam.
-    intuition. basic_typing_regular_simp. basic_typing_regular_simp.
-    rewrite reduction_nest_tlete; eauto.
-  - rewrite is_coverage_rty_open; eauto.
+    inversion He; subst; eauto.
+    admit.
+  - apply reduction_mk_app_lam'; eauto.
+    admit.
+    admit.
+  -
+
+    rewrite is_coverage_rty_open; eauto.
 Qed. *)
 Admitted.
 

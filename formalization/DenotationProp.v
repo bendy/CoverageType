@@ -57,24 +57,28 @@ Lemma rtyR_refine_aux n: forall τ e1 e2,
 Proof.
   induction n; intros τ e1 e2 Hm Hunder [Ht Hr] H; simpl in *;
     destruct τ; simpl in *; eauto; try easy.
-  qauto using basic_typing_tm_unique.
-  intuition.
   - qauto using basic_typing_tm_unique.
-  - destruct H2 as (v & Hv & Hvv); subst.
-    exists v. intuition.
-  (*   eapply IHn; eauto. *)
-  (*   + repeat rewrite_measure_irrelevant. *)
-  (*     rewrite <- open_preserves_rty_measure. lia. *)
-  (*   + is_tm_rty_tac. *)
-  (*   + simp_hyps. unique_basic_type. *)
-  (*     eapply tm_refine_mk_app; eauto. *)
-  (*     * split; eauto. *)
-  (*     * rtyR_regular_simp. *)
-  (*     * eapply mk_app_e_v_has_type; eauto. *)
-  (*       rtyR_regular_simp. basic_typing_solver. *)
-  (* - intuition. qauto using basic_typing_tm_unique. *)
-  (*   destruct τ; eauto. *)
-  (*   intros. edestruct H2 as (v & Hv & Hvv); eauto. *)
+  - intuition.
+    + qauto using basic_typing_tm_unique.
+    + eapply IHn; try lia; eauto.
+      inversion Hunder; eauto.
+      split.
+      * destruct Ht as (? & ? & ?).
+        unique_basic_type.
+        eexists; split; eauto.
+        -- eapply mk_app_has_type; eauto.
+           eapply rtyR_typed_closed in H1; intuition.
+        -- eapply mk_app_has_type; eauto.
+           eapply rtyR_typed_closed in H1; intuition.
+      * destruct Ht as (? & ? & ?).
+        unique_basic_type.
+        intros.
+        eapply tm_refine_mk_app; intuition eauto.
+        split; eauto.
+        eapply rtyR_typed_closed in H1; intuition.
+        eapply basic_typing_regular_tm; eauto.
+        eapply mk_app_has_type; eauto.
+        eapply rtyR_typed_closed in H1; intuition.
 Qed.
 
 Lemma rtyR_refine: forall τ e1 e2,
@@ -92,4 +96,6 @@ Lemma denot_const_overrty (c: constant):
 Proof.
   intros.
   split; [| split]; eauto.
+  intros; inversion H2; subst; eauto.
+  inversion H3.
 Qed.

@@ -35,17 +35,10 @@ Fixpoint rtyR (gas: nat) (ρ: rty) (e: tm) : Prop :=
   | S gas' =>
       ∅ ⊢t e ⋮t ⌊ ρ ⌋ /\ closed_rty ∅ ρ /\
         match ρ with
-        | {: b | ϕ} => exists (v: value), e = v /\ ⟦ ϕ ^q^ v ⟧q
+        | {: b | ϕ} => forall (v: value), e ↪* v -> ⟦ ϕ ^q^ v ⟧q
         | [: b | ϕ] => forall (v: value), ⟦ ϕ ^q^ v ⟧q -> e ↪* v
         | ρx ⇨ τ =>
-            exists (v: value),
-            e ↪* v /\
-              match ρx with
-              | [: _ | _ ] =>
-                  forall (e_x: tm), rtyR gas' ρx e_x -> rtyR gas' τ (mk_app v e_x)
-              | _ =>
-                  forall (v_x: value), rtyR gas' ρx v_x -> rtyR gas' (τ ^r^ v_x) (mk_app v v_x)
-              end
+            forall (v: value), rtyR gas' ρx v -> rtyR gas' τ (mk_app e v)
         end
   end.
 
@@ -234,7 +227,9 @@ Lemma mk_eq_constant_over_denote_rty c:
   ⟦ mk_eq_constant_over c ⟧ c.
 Proof.
   simpl. split; [| split]; cbn; eauto using mk_eq_constant_over_closed_rty.
-  exists c. intuition.
+  intros; inversion H; subst.
+  reflexivity.
+  inversion H0.
 Qed.
 
 Lemma closed_base_rty_qualifier_and B ϕ1 ϕ2 Γ:
@@ -259,7 +254,9 @@ Proof.
   intros (?&?&?) (?&?&?).
   split; [| split]; eauto using closed_base_rty_qualifier_and.
   simp_hyps; subst.
-  exists v. intuition.
+  intros.
+  ospecialize* H1; eauto.
+  ospecialize* H4; eauto.
   rewrite qualifier_and_open.
   rewrite denote_qualifier_and.
   qauto.
@@ -299,11 +296,11 @@ Proof.
     try solve [sinvert Hm; sinvert Hn; sinvert Hk; eauto];
     try solve [lia_tac].
   - destruct H as (HT & Hclosed & H). simpl; intuition.
-    exist_tac.
-    destruct ρ1; intuition; do 2 rewrite <- (IHk _ _ n) in *; try lia_tac.
+    eapply (IHk _ _ n); simpl in Hk; try lia; eauto.
+    eapply H; eapply (IHk _ _ m); eauto; lia.
   - destruct H as (HT & Hclosed & H). simpl; intuition.
-    exist_tac.
-    destruct ρ1; intuition; do 2 rewrite (IHk _ m) in *; try lia_tac.
+    eapply (IHk _ _ m); simpl in Hk; try lia; eauto.
+    eapply H; eapply (IHk _ _ n); eauto; lia.
 Qed.
 
 (* The conclusion has to be strengthened to an equivalence to get around
