@@ -130,8 +130,8 @@ Ltac restructure_typing_regular :=
   restructure_typing HOrg;
   match goal with
   | [H: ctxRst ?Γ _, HOrg: ?Γ ⊢ ?e ⋮t ?τ |- (⟦(m{ _ }r) ?τ⟧) ((m{_}t ?e))] =>
-      pose (tm_typing_regular_basic_typing _ _ _ HOrg) as HBTOrg;
-      pose (msubst_preserves_basic_typing_tm_empty _ _  H _ _ HBTOrg) as HBTOrgMsubst
+      pose proof (tm_typing_regular_basic_typing _ _ _ HOrg) as HBTOrg;
+      pose proof (msubst_preserves_basic_typing_tm_empty _ _  H _ _ HBTOrg) as HBTOrgMsubst
   | [H: ctxRst ?Γ _, HOrg: ?Γ ⊢ ?e ⋮v ?τ |- (⟦(m{ _ }r) ?τ⟧) (treturn (m{_}v ?e))] =>
       pose (value_typing_regular_basic_typing _ _ _ HOrg) as HBTOrg;
       pose (msubst_preserves_basic_typing_value_empty _ _  H _ _ HBTOrg) as HBTOrgMsubst
@@ -266,20 +266,24 @@ Proof.
   - intros Γ e1 e2 τ1 τ2 L HTe1 HDe1 HWF HTe HDe Γv HΓv.
     restructure_typing_regular.
     repeat msubst_simp.
-    eapply denotation_application_tlete; simp_tac.
+    ospecialize* HDe; eauto.
+    eapply denotation_application_tlete; try eassumption; simp_tac.
     + intuition.
       eauto using msubst_preserves_closed_rty_empty.
+    + eapply is_coverage_rty_msubst; eauto using ctxRst_closed_env.
+      eapply tm_typing_regular_wf; eauto.
+    + eapply is_coverage_rty_msubst; eauto using ctxRst_closed_env.
+      eapply tm_typing_regular_wf; eauto.
     + intros v_x Hv_x.
       auto_ctx_letbinding v_x.
-      * rewrite <- msubst_flip_rty in Hv_x;
-          [ | eapply ctxRst_closed_env; eauto].
-        apply tm_typing_regular_wf in HTe. admit.
-      * admit.
+      * eapply tm_typing_regular_wf; eauto.
       * ospecialize* HDe1; eauto.
-        rewrite msubst_insert_fresh_rty in HDe1. repeat msubst_simp.
+        rewrite msubst_insert_fresh_rty in HDe1; eauto using ctxRst_closed_env, rtyR_closed_value.
         rewrite open_rec_lc_rty.
-        erewrite msubst_intro_tm; eauto.
-        4:  misc_solver. *)
+        erewrite <- msubst_intro_tm in HDe1; eauto using ctxRst_closed_env, rtyR_closed_value, ctxRst_lc;
+          simpl_fv; my_set_solver.
+        { admit. }
+        apply ctxRst_dom in HΓv; my_set_solver.
   (* [TApp] *)
   - intros Γ v1 v2 e ρ1 ρ2 A ρ B L HTe HDe HWF HTv2 HDv2 HTv1 HDv1 Γv HΓv.
     restructure_typing_regular.
