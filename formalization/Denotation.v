@@ -37,8 +37,7 @@ Fixpoint rtyR (gas: nat) (ρ: rty) (e: tm) : Prop :=
         match ρ with
         | {: b | ϕ} => forall (v: value), e ↪* v -> ⟦ ϕ ^q^ v ⟧q
         | [: b | ϕ] => forall (v: value), ⟦ ϕ ^q^ v ⟧q -> e ↪* v
-        | ρx ⇨ τ =>
-            forall (v: value), rtyR gas' ρx v -> rtyR gas' τ (mk_app e v)
+        | ρx ⇨ τ => forall (v: value), rtyR gas' ρx v -> rtyR gas' (τ ^r^ v) (mk_app e v)
         end
   end.
 
@@ -297,10 +296,12 @@ Proof.
     try solve [lia_tac].
   - destruct H as (HT & Hclosed & H). simpl; intuition.
     eapply (IHk _ _ n); simpl in Hk; try lia; eauto.
-    eapply H; eapply (IHk _ _ m); eauto; lia.
+    + rewrite <- open_preserves_rty_measure; lia.
+    + eapply H; eapply (IHk _ _ m); eauto; lia.
   - destruct H as (HT & Hclosed & H). simpl; intuition.
     eapply (IHk _ _ m); simpl in Hk; try lia; eauto.
-    eapply H; eapply (IHk _ _ n); eauto; lia.
+    + rewrite <- open_preserves_rty_measure; lia.
+    + eapply H; eapply (IHk _ _ n); eauto; lia.
 Qed.
 
 (* The conclusion has to be strengthened to an equivalence to get around

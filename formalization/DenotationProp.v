@@ -61,24 +61,26 @@ Proof.
   - intuition.
     + qauto using basic_typing_tm_unique.
     + eapply IHn; try lia; eauto.
-      inversion Hunder; eauto.
-      split.
-      * destruct Ht as (? & ? & ?).
-        unique_basic_type.
-        eexists; split; eauto.
-        -- eapply mk_app_has_type; eauto.
-           eapply rtyR_typed_closed in H1; intuition.
-        -- eapply mk_app_has_type; eauto.
-           eapply rtyR_typed_closed in H1; intuition.
-      * destruct Ht as (? & ? & ?).
-        unique_basic_type.
-        intros.
-        eapply tm_refine_mk_app; intuition eauto.
-        split; eauto.
-        eapply rtyR_typed_closed in H1; intuition.
-        eapply basic_typing_regular_tm; eauto.
-        eapply mk_app_has_type; eauto.
-        eapply rtyR_typed_closed in H1; intuition.
+      * rewrite <- open_preserves_rty_measure; lia.
+      * rewrite is_coverage_rty_open.
+        inversion Hunder; eauto.
+      * split.
+        -- destruct Ht as (? & ? & ?).
+           unique_basic_type.
+           eexists; split; eauto.
+           ++ eapply mk_app_has_type; eauto.
+              eapply rtyR_typed_closed in H1; intuition.
+           ++ eapply mk_app_has_type; eauto.
+              eapply rtyR_typed_closed in H1; intuition.
+        -- destruct Ht as (? & ? & ?).
+           unique_basic_type.
+           intros.
+           eapply tm_refine_mk_app; intuition eauto.
+           ++ split; eauto.
+           ++ eapply rtyR_typed_closed in H1; intuition.
+           eapply basic_typing_regular_tm; eauto.
+           ++ eapply mk_app_has_type; eauto.
+              eapply rtyR_typed_closed in H1; intuition.
 Qed.
 
 Lemma rtyR_refine: forall τ e1 e2,

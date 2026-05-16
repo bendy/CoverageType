@@ -92,9 +92,6 @@ Proof.
   rewrite lete_lc_body in Hlclete.
   destruct Hlclete as [Hlcex Hbody].
   (* Case split on ρ *)
-  destruct ρ as [b ϕ | b ϕ | ρa τa].
-  - cbn; intuition.
-    eapply reduction_tlete' in H; destruct H; intuition.
 
 
 
@@ -309,20 +306,18 @@ Proof.
   apply rtyR_typed_closed in H0. simp_hyps. sinvert H1.
   split; intros.
   - apply rtyR_typed_closed in H. destruct H as [H _].
-    eexists T.
-    instantiate (1 := e ^t^ v).
+    eexists _.
     repeat esplit; eauto.
     eapply mk_app_has_type; eauto.
     inversion He; subst; eauto.
-    admit.
+    rewrite <- rty_erase_open_eq; eauto.
   - apply reduction_mk_app_lam'; eauto.
-    admit.
-    admit.
-  -
-
-    rewrite is_coverage_rty_open; eauto.
-Qed. *)
-Admitted.
+    eapply basic_typing_regular_value.
+    inversion H0; subst; eauto.
+    eapply lc_abs_iff_body.
+    lc_solver_plus.
+  - is_coverage_rty_tac.
+Qed.
 
 Lemma denotation_application_fixed (Tx : base_ty) T ϕ τ e :
   is_coverage_rty τ -> T = ⌊ τ ⌋ ->
